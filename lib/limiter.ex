@@ -1,20 +1,37 @@
 defmodule Limiter.Result do
   @moduledoc """
-  The struct is the result of calling `Limiter.checkout` function.
-
-  The result map contains the following values:
-
-    * `limited` - indicates if an action should be limited
-    * `remaining` - how many actions are remainig before reaching the limit
-    * `reset_after` - how long it will take to get to the iniatial state
-    * `retry_after` - how long it will take for the next call/request to be
-      allowed
+  The struct is the result of calling `Limiter.checkout/5` function.
   """
 
-  @type t :: %Limiter.Result{limited: boolean, remaining: non_neg_integer,
-    reset_after: non_neg_integer, retry_after: non_neg_integer}
+  @typedoc """
+  Indicates if an action is allowed or rate limited.
+  """
+  @type allowed :: boolean
 
-  defstruct limited: false, remaining: 0, reset_after: 0, retry_after: 0
+  @typedoc """
+  The number of actions that is allowed before reaching the rate limit.
+  """
+  @type remaining :: non_neg_integer
+
+  @typedoc """
+  How long (in milliseconds) it will take for the given key to get to the
+  initial state.
+  """
+  @type reset_after :: non_neg_integer
+
+  @typedoc """
+  How long (in milliseconds) it will take for the next action (associated with
+  the given key) to be allowed.
+  """
+  @type retry_after :: non_neg_integer
+
+  @typedoc """
+  The result map.
+  """
+  @type t :: %Limiter.Result{allowed: allowed, remaining: remaining,
+    reset_after: reset_after, retry_after: retry_after}
+
+  defstruct allowed: true, remaining: 0, reset_after: 0, retry_after: 0
 end
 
 defmodule Limiter do
@@ -32,76 +49,87 @@ defmodule Limiter do
 
   Example usage:
 
-  Limiter.checkout("key", 10_000, 5)
+      Limiter.checkout({Limiter.Storage.ConCache, :storage}, "key", 10_000, 5)
+
   """
 
   alias Limiter.Result
-  import ConCache, only: [delete: 2, dirty_put: 3, get: 2, isolated: 3]
 
-  @cache :limiter_cache
+  @typedoc """
+  Tuple that contains the module used for storage and options for the given
+  storage.
+  """
+  @type storage :: {storage_module, storage_options}
 
+  @typedoc """
+  Storage module that implements `Limiter.Storage` behaviour.
+  """
+  @type storage_module :: module
+
+  @typedoc """
+  Options for a storage module. These options may differ for different storage
+  implementations.
+  """
+  @type storage_options :: term
+
+  @typedoc """
+  The key associated with an action which is rate limited.
+  """
   @type key :: term
+
+  @typedoc """
+  The weight of an action. Typically it's set to `1`. The more expensive
+  actions may use greater value.
+  """
   @type quantity :: pos_integer
+
+  @typedoc """
+  The period of time that along with `limit` defines the rate limit.
+  """
   @type period :: pos_integer
+
+  @typedoc """
+  The number of actions (in case the `quantity` is `1`) that along with
+  the `period` defines the rate limit.
+  """
   @type limit :: non_neg_integer
 
   @doc """
-  Checks if an action associated with a key is limited.
-
-  ## Arguments:
-
-    * `key` - the key associated with an action
-    * `quantity` - the weight of a given action. For example, a quantity of
-      1 can be used for a single request, higher value can be used for more
-      expensive operations
-    * `period` - the time interval (in milliseconds). Together with `limit`,
-      it determines the rate limit
-    * `limit` - the number of actions (if the `quantity` is `1`) allowed
-      within a `period`
+  Checks if an action associated with a key is allowed.
   """
-  @spec checkout(key, quantity, period, limit) :: Result.t
-  def checkout(key, quantity \\ 1, period, limit) do
-    now = System.monotonic_time :milliseconds
+  @spec checkout(storage, key, quantity, period, limit) :: Result.t
+  def checkout(storage, key, quantity \\ 1, period, limit) do
+    now = time()
     dvt = period * limit
     inc = quantity * period
-
-    {result, ttl} = isolated @cache, key, fn ->
-      tat_value = get @cache, key
-      tat = if tat_value == nil, do: now, else: tat_value
-      tat_new = if now > tat, do: now + inc, else: tat + inc
-      allow_at = tat_new - dvt
-      diff = now - allow_at
-      if diff < 0 do
-        retry_after = if inc <= dvt, do: -diff, else: 0
-        ttl = tat - now
-        {%Result{limited: true, retry_after: retry_after}, ttl}
-      else
-        ttl = tat_new - now
-        dirty_put @cache, key, %ConCache.Item{value: tat_new, ttl: ttl}
-        {%Result{}, ttl}
-      end
-    end
-
-    next = dvt - ttl
-    result = if next > -period do
-      remaining = round next / period
-      remaining = if remaining < 0, do: 0, else: remaining
-      %{result | remaining: remaining}
+    max_tat = now + dvt
+    tat = get_and_store(storage, key, now, inc, max_tat)
+    new_tat = tat + inc
+    allow_at = new_tat - dvt
+    diff = now - allow_at
+    {result, ttl} = if (diff < 0) do
+      retry_after = if (inc <= dvt), do: -diff, else: 0
+      {%Result{allowed: false, retry_after: retry_after}, tat - now}
     else
-      result
+      {%Result{}, new_tat - now}
     end
-    %{result | reset_after: ttl}
+    next = dvt - ttl
+    if (next > -period) do
+      %{result | remaining: round(next / period) |> max(0), reset_after: ttl}
+    else
+      %{result | reset_after: ttl}
+    end
   end
+
 
   @doc """
-  Resets a key.
-
-  ## Arguments:
-
-    * `key` - the key associated with an action
+  Resets the value associated with the key.
   """
-  @spec reset(key) :: :ok
-  def reset(key) do
-    delete @cache, key
-  end
+  @spec reset(storage, key) :: :ok
+  def reset({mod, opts}, key), do: mod.reset(opts, key)
+
+  defp get_and_store({mod, opts}, key, now, inc, max_tat),
+    do: mod.get_and_store(opts, key, now, inc, max_tat)
+
+  defp time(), do: System.system_time(:milliseconds)
 end

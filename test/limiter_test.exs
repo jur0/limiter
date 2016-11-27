@@ -1,55 +1,59 @@
 defmodule LimiterTest do
-  use ExUnit.Case
-  doctest Limiter
+  use ExUnit.Case, async: true
 
-  test "zero limit" do
-    assert Limiter.checkout("test_key", 100, 0) |> limited?
-    assert Limiter.checkout("test_key", 100, 0) |> limited?
-    assert Limiter.checkout("test_key2", 10, 1000, 0) |> limited?
+  import Limiter
+
+  setup_all do
+    [storage, _storage_small_ttl] = Application.get_env(:limiter, :storage)
+    {:ok, storage: storage}
   end
 
-  test "multiple calls, same key" do
-    refute Limiter.checkout("key", 100, 3) |> limited?
-    refute Limiter.checkout("key", 100, 3) |> limited?
-    refute Limiter.checkout("key", 100, 3) |> limited?
-    assert Limiter.checkout("key", 100, 3) |> limited?
-    assert Limiter.checkout("key", 100, 3) |> limited?
-    assert Limiter.checkout("key", 100, 3) |> limited?
+  test "zero limit", %{storage: storage} do
+    refute checkout(storage, "test_key", 100, 0) |> allow?
+    refute checkout(storage, "test_key", 100, 0) |> allow?
+    refute checkout(storage, "test_key2", 10, 5_000, 0) |> allow?
   end
 
-  test "multiple calls, same key, changeable limit" do
-    refute Limiter.checkout(:a, 200, 1) |> limited?
-    refute Limiter.checkout(:a, 200, 2) |> limited?
-    refute Limiter.checkout(:a, 200, 3) |> limited?
-    assert Limiter.checkout(:a, 200, 3) |> limited?
-    assert Limiter.checkout(:a, 200, 2) |> limited?
-    assert Limiter.checkout(:a, 200, 1) |> limited?
+  test "multiple calls, same key", %{storage: storage} do
+    assert checkout(storage, "key", 100, 3) |> allow?
+    assert checkout(storage, "key", 100, 3) |> allow?
+    assert checkout(storage, "key", 100, 3) |> allow?
+    refute checkout(storage, "key", 100, 3) |> allow?
+    refute checkout(storage, "key", 100, 3) |> allow?
+    refute checkout(storage, "key", 100, 3) |> allow?
   end
 
-  test "reset key" do
-    refute Limiter.checkout({1, 2, 3}, 100, 2) |> limited?
-    refute Limiter.checkout({1, 2, 3}, 100, 2) |> limited?
-    Limiter.reset({1, 2, 3})
-    refute Limiter.checkout({1, 2, 3}, 100, 2) |> limited?
-    refute Limiter.checkout({1, 2, 3}, 100, 2) |> limited?
-    assert Limiter.checkout({1, 2, 3}, 100, 2) |> limited?
+  test "multiple calls, same key, changeable limit", %{storage: storage} do
+    assert checkout(storage, :a, 200, 1) |> allow?
+    assert checkout(storage, :a, 200, 2) |> allow?
+    assert checkout(storage, :a, 200, 3) |> allow?
+    refute checkout(storage, :a, 200, 3) |> allow?
+    refute checkout(storage, :a, 200, 2) |> allow?
+    refute checkout(storage, :a, 200, 1) |> allow?
   end
 
-  test "multiple concurrent calls, same key" do
-    key = :b
+  test "reset key", %{storage: storage} do
+    assert checkout(storage, {1, 2, 3}, 100, 2) |> allow?
+    assert checkout(storage, {1, 2, 3}, 100, 2) |> allow?
+    reset(storage, {1, 2, 3})
+    assert checkout(storage, {1, 2, 3}, 100, 2) |> allow?
+    assert checkout(storage, {1, 2, 3}, 100, 2) |> allow?
+    refute checkout(storage, {1, 2, 3}, 100, 2) |> allow?
+  end
+
+  test "multiple concurrent calls, same key", %{storage: storage} do
+    key = :key
     limit = 5
-    processes = limit + 5
-    Enum.each(1..processes,
-      fn(n) ->
-        if n <= limit do
-          spawn(fn -> refute Limiter.checkout(key, 1000, limit) |> limited? end)
-        else
-          spawn(fn -> assert Limiter.checkout(key, 1000, limit) |> limited? end)
-        end
-      end)
+    Enum.each(1..limit, fn(_n) ->
+      spawn(fn -> assert checkout(storage, key, 500, limit) |> allow? end)
+    end)
+    :timer.sleep(10)
+    Enum.each(1..limit, fn(_n) ->
+      spawn(fn -> refute checkout(storage, key, 500, limit) |> allow? end)
+    end)
   end
 
   # TODO: quantity, reset_after, retry_after tests
 
-  defp limited?(%Limiter.Result{limited: limited}), do: limited
+  defp allow?(%Limiter.Result{allowed: allowed}), do: allowed
 end

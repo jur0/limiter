@@ -1,3 +1,3 @@
 use Mix.Config
 
-config :limiter, ttl_check: 1000
+import_config "#{Mix.env}.exs"
