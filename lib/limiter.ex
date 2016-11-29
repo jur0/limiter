@@ -28,7 +28,7 @@ defmodule Limiter.Result do
   @typedoc """
   The result map.
   """
-  @type t :: %Limiter.Result{allowed: allowed, remaining: remaining,
+  @type t :: %__MODULE__{allowed: allowed, remaining: remaining,
     reset_after: reset_after, retry_after: retry_after}
 
   defstruct allowed: true, remaining: 0, reset_after: 0, retry_after: 0
