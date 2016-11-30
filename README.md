@@ -1,5 +1,7 @@
 # Limiter
 
+[![Build Status](https://travis-ci.org/jur0/limiter.svg?branch=master)](https://travis-ci.org/jur0/limiter)
+
 Rate limiter implementation of Generic Cell Rate Algorithm (GCRA).
 
 For detailed information on how the algorithm works, please check the following
