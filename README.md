@@ -70,7 +70,7 @@ The storage can be started in two ways:
     Supervisor.start_link(children, ...)
     ```
 
-The `limiter` exports `checkout/5` with the following arguments:
+The `Limiter` module exports `checkout/5` with the following arguments:
 
   * `storage` - tuple that contains the module used for storage
   (`Limiter.Storage.ConCache`) and options for the given storage.
