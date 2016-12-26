@@ -1,4 +1,6 @@
 defmodule Limiter.Storage.ConCache do
+  @moduledoc false
+
   @behaviour Limiter.Storage
   alias ConCache.Item
 
