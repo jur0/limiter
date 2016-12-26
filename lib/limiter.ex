@@ -107,20 +107,20 @@ defmodule Limiter do
     new_tat = tat + inc
     allow_at = new_tat - dvt
     diff = now - allow_at
-    {result, ttl} = if (diff < 0) do
-      retry_after = if (inc <= dvt), do: -diff, else: 0
+    {result, ttl} = if diff < 0 do
+      retry_after = if inc <= dvt, do: -diff, else: 0
       {%Result{allowed: false, retry_after: retry_after}, tat - now}
     else
       {%Result{}, new_tat - now}
     end
     next = dvt - ttl
-    if (next > -period) do
-      %{result | remaining: round(next / period) |> max(0), reset_after: ttl}
+    if next > -period do
+      rem = round(next / period)
+      %{result | remaining: max(rem, 0), reset_after: ttl}
     else
       %{result | reset_after: ttl}
     end
   end
-
 
   @doc """
   Resets the value associated with the key.
@@ -132,4 +132,5 @@ defmodule Limiter do
     do: mod.get_and_store(opts, key, now, inc, max_tat)
 
   defp time(), do: System.system_time(:milliseconds)
+
 end
