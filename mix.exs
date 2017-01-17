@@ -6,7 +6,7 @@ defmodule Limiter.Mixfile do
   def project do
     [app: :limiter,
      version: @version,
-     elixir: "~> 1.3",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      description: description(),
@@ -25,7 +25,7 @@ defmodule Limiter.Mixfile do
   end
 
   defp deps do
-    [{:con_cache, "~> 0.11.1"},
+    [{:con_cache, "~> 0.12"},
      {:dialyxir, "~> 0.4", only: :dev},
      {:ex_doc, "~> 0.14", only: :dev}]
   end
