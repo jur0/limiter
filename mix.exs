@@ -31,13 +31,14 @@ defmodule Limiter.Mixfile do
 
   defp docs do
     [source_url: "https://github.com/jur0/limiter",
-     source_ref: @version,
-     extras: ["README.md"]]
+     source_ref: "v#{@version}",
+     extras: ["README.md"],
+     main: ["Limiter"]]
   end
 
   defp package do
     [maintainers: ["Juraj Hlista"],
      licenses: ["MIT"],
-     links: %{"Github" => "https://github.com/jur0/limiter"}]
+     links: %{"GitHub" => "https://github.com/jur0/limiter"}]
   end
 end
