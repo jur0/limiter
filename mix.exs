@@ -26,7 +26,6 @@ defmodule Limiter.Mixfile do
 
   defp deps do
     [{:con_cache, "~> 0.12"},
-     {:dialyxir, "~> 0.4", only: :dev},
      {:ex_doc, "~> 0.14", only: :dev}]
   end
 
