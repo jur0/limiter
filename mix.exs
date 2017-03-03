@@ -16,7 +16,7 @@ defmodule Limiter.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :con_cache],
+    [extra_applications: [:logger],
      mod: {Limiter.Application, []}]
   end
 
