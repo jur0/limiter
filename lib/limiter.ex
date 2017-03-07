@@ -129,11 +129,12 @@ defmodule Limiter do
   Resets the value associated with the key.
   """
   @spec reset(storage, key) :: :ok
-  def reset({mod, opts}, key), do: mod.reset(opts, key)
+  def reset({mod, opts}, key),
+    do: mod.reset(opts, key)
 
   defp get_and_store({mod, opts}, key, now, inc, max_tat),
     do: mod.get_and_store(opts, key, now, inc, max_tat)
 
-  defp time(), do: System.system_time(:milliseconds)
-
+  defp time(),
+    do: System.system_time(:milliseconds)
 end

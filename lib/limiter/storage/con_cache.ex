@@ -50,7 +50,6 @@ defmodule Limiter.Storage.ConCache do
   @doc """
   Implements `reset/2` callback from `Limiter.Storage`.
   """
-  def reset(name, key) do
-    ConCache.delete(name, key)
-  end
+  def reset(name, key),
+    do: ConCache.delete(name, key)
 end
