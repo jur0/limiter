@@ -1,7 +1,9 @@
 defmodule Limiter.Storage do
   @moduledoc """
-  Behaviour for the storage. The storage stores theoretical arrival time (TAT)
-  and time to live (TTL) for each key.
+  Behaviour for the storage.
+
+  The storage stores theoretical arrival time (TAT) and time to live (TTL)
+  for each key.
   """
 
   @type options :: Limiter.storage_options

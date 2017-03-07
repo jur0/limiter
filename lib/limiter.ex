@@ -67,8 +67,9 @@ defmodule Limiter do
   @type storage_module :: module
 
   @typedoc """
-  Options for a storage module. These options may differ for different storage
-  implementations.
+  Options for a storage module.
+
+  These options may differ for different storage implementations.
   """
   @type storage_options :: term
 
@@ -78,8 +79,10 @@ defmodule Limiter do
   @type key :: term
 
   @typedoc """
-  The weight of an action. Typically it's set to `1`. The more expensive
-  actions may use greater value.
+  The weight of an action.
+
+  Typically it's set to `1`. The more expensive  actions may use greater
+  value.
   """
   @type quantity :: pos_integer
 
