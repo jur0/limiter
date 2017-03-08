@@ -1,6 +1,7 @@
 # Limiter
 
 [![Build Status](https://travis-ci.org/jur0/limiter.svg?branch=master)](https://travis-ci.org/jur0/limiter)
+[![Hex.pm](https://img.shields.io/hexpm/v/limiter.svg)](https://hex.pm/packages/limiter)
 
 Rate limiter implementation of Generic Cell Rate Algorithm (GCRA).
 
